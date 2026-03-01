@@ -13,19 +13,17 @@ const MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
 
 // 1. GEOCODING — Nominatim
 async function getCoordinates(query) {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)},India&format=json&limit=1&addressdetails=1`;
-    const response = await fetch(url, {
-        headers: { 'User-Agent': 'HealthyCommute/1.0' }
-    });
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?country=IN&limit=1&access_token=${MAPBOX_TOKEN}`;
+    const response = await fetch(url);
     const data = await response.json();
-    if (!data || data.length === 0) throw new Error(`Location not found: ${query}`);
-    console.log(`Geocoded "${query}" to: ${data[0].display_name}`);
-    return [parseFloat(data[0].lon), parseFloat(data[0].lat)];
+    if (!data.features || data.features.length === 0) throw new Error(`Location not found: ${query}`);
+    console.log(`Geocoded "${query}" to: ${data.features[0].place_name}`);
+    return data.features[0].center; // [lon, lat]
 }
 
 // 2. AIR QUALITY — PM2.5
 async function getAirQuality(lon, lat) {
-    const url = `http://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${OWM_API_KEY}`;
+    const url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${OWM_API_KEY}`;
     const response = await fetch(url);
     const data = await response.json();
     let pm25 = 15;
