@@ -368,7 +368,7 @@ function App() {
             </div>
           )}
 
-          <div className="hud-footer">REBEL ALLIANCE NAVIGATION CORPS · EST. 0 BBY</div>
+          <div className="hud-footer">EMPIRE NAVIGATION CORPS</div>
         </div>
       )}
     </div>
