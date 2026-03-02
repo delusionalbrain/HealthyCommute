@@ -188,9 +188,9 @@ function App() {
   const progressPct = steps.length > 1 ? Math.round((currentStep / (steps.length - 1)) * 100) : 0;
 
   const ROUTE_CONFIGS = [
-    { key: 'healthiest',      label: '🌿 HEALTHIEST ROUTE', badge: 'OPTIMAL PATH', badgeCls: 'badge-green',  cls: 'route-healthiest', color: '#00ff88' },
-    { key: 'fastest',         label: '⚡ RAPID VECTOR',     badge: 'FASTEST',      badgeCls: 'badge-blue',   cls: 'route-fastest',    color: '#4da6ff' },
-    { key: 'secondHealthiest',label: '🍃 SECONDARY PATH',   badge: 'ALTERNATE',    badgeCls: 'badge-yellow', cls: 'route-secondary',  color: '#ffe81f' },
+    { key: 'healthiest',      label: 'HEALTHIEST ROUTE', badge: 'OPTIMAL PATH', badgeCls: 'badge-green',  cls: 'route-healthiest', color: '#00ff88' },
+    { key: 'fastest',         label: 'RAPID VECTOR',     badge: 'FASTEST',      badgeCls: 'badge-blue',   cls: 'route-fastest',    color: '#4da6ff' },
+    { key: 'secondHealthiest',label: 'SECONDARY PATH',   badge: 'ALTERNATE',    badgeCls: 'badge-yellow', cls: 'route-secondary',  color: '#ffe81f' },
   ];
 
   // ─── RENDER ──────────────────────────────────────────────────────────────────
