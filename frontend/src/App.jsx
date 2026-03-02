@@ -32,6 +32,7 @@ function App() {
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
   const userMarkerRef = useRef(null);
+  const originMarkerRef = useRef(null); // ← NEW: separate pin for origin
   const watchIdRef = useRef(null);
 
   // Stars
@@ -87,11 +88,16 @@ function App() {
       return;
     }
 
+    // Remove origin pin when navigation starts
+    if (originMarkerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(originMarkerRef.current);
+      originMarkerRef.current = null;
+    }
+
     setNavRoute(route);
     setNavActive(true);
     setCurrentStep(0);
     drawRoute(route.geometry, '#00ff88');
-
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -116,16 +122,12 @@ function App() {
           if (!nextStep?.location) return prevStep;
           const dist = haversineM(lonLat, nextStep.location);
           setDistToNext(Math.round(dist));
-          if (dist < 30) {
-            const afterNext = steps[prevStep + 2];
-            return prevStep + 1;
-          }
+          if (dist < 30) return prevStep + 1;
           return prevStep;
         });
       },
       (err) => {
         console.warn('GPS error:', err.message);
-        // Fallback: place marker at route start so UI is still usable
         const startCoord = route.geometry?.coordinates?.[0];
         if (startCoord && mapRef.current) {
           const icon = L.divIcon({ className: '', html: `<div class="user-dot"></div>`, iconSize: [20, 20], iconAnchor: [10, 10] });
@@ -155,6 +157,11 @@ function App() {
   const swapLocations = () => {
     setStart(end); setEnd(start); setRoutes(null); stopNavigation();
     if (routeLayerRef.current && mapRef.current) mapRef.current.removeLayer(routeLayerRef.current);
+    // Remove origin marker on swap
+    if (originMarkerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(originMarkerRef.current);
+      originMarkerRef.current = null;
+    }
   };
 
   const fetchRoutes = async () => {
@@ -188,30 +195,70 @@ function App() {
   const progressPct = steps.length > 1 ? Math.round((currentStep / (steps.length - 1)) * 100) : 0;
 
   const ROUTE_CONFIGS = [
-    { key: 'healthiest',      label: 'HEALTHIEST ROUTE', badge: 'OPTIMAL PATH', badgeCls: 'badge-green',  cls: 'route-healthiest', color: '#00ff88' },
-    { key: 'fastest',         label: 'RAPID VECTOR',     badge: 'FASTEST',      badgeCls: 'badge-blue',   cls: 'route-fastest',    color: '#4da6ff' },
-    { key: 'secondHealthiest',label: 'SECONDARY PATH',   badge: 'ALTERNATE',    badgeCls: 'badge-yellow', cls: 'route-secondary',  color: '#ffe81f' },
+    { key: 'healthiest',       label: 'HEALTHIEST ROUTE', badge: 'OPTIMAL PATH', badgeCls: 'badge-green',  cls: 'route-healthiest', color: '#00ff88' },
+    { key: 'fastest',          label: 'RAPID VECTOR',     badge: 'FASTEST',      badgeCls: 'badge-blue',   cls: 'route-fastest',    color: '#4da6ff' },
+    { key: 'secondHealthiest', label: 'SECONDARY PATH',   badge: 'ALTERNATE',    badgeCls: 'badge-yellow', cls: 'route-secondary',  color: '#ffe81f' },
   ];
 
+  // ─── FIXED: USE CURRENT LOCATION ─────────────────────────────────────────────
+  // BUG WAS: coords were set in input correctly but no map marker was placed,
+  // and map never panned to the actual GPS position — so visually it looked "wrong".
+  // FIX: place an origin pin on the map at the EXACT same lat/lon set in the input box.
+
   const useCurrentLocation = () => {
-  if (!navigator.geolocation) {
-    alert("Geolocation not supported");
-    return;
-  }
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported");
+      return;
+    }
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude.toFixed(6);
-      const lon = pos.coords.longitude.toFixed(6);
-      setStart(`${lat}, ${lon}`);
-    },
-    (err) => {
-      alert("Location access denied or unavailable");
-    },
-    { enableHighAccuracy: true }
-  );
-};
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
 
+        // ✅ Set input box with the EXACT same values shown on map (6 decimal places)
+        const latStr = lat.toFixed(6);
+        const lonStr = lon.toFixed(6);
+        setStart(`${latStr}, ${lonStr}`);
+
+        const map = mapRef.current;
+        if (!map) return;
+
+        // ✅ Remove any previous origin marker
+        if (originMarkerRef.current) {
+          map.removeLayer(originMarkerRef.current);
+          originMarkerRef.current = null;
+        }
+
+        // ✅ Place a visible origin pin at the EXACT GPS coordinates
+        const originIcon = L.divIcon({
+          className: '',
+          html: `<div style="
+            width: 16px; height: 16px;
+            background: #00ff88;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00ff88, 0 0 16px #00ff8866;
+          "></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        // ✅ Leaflet uses [lat, lon] — this must match what we put in the input box
+        originMarkerRef.current = L.marker([lat, lon], { icon: originIcon })
+          .addTo(map)
+          .bindPopup(`📍 Your Location<br>${latStr}, ${lonStr}`)
+          .openPopup();
+
+        // ✅ Pan map to actual GPS location
+        map.setView([lat, lon], 15, { animate: true });
+      },
+      (err) => {
+        alert("Location access denied or unavailable: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // ─── RENDER ──────────────────────────────────────────────────────────────────
 
@@ -266,7 +313,7 @@ function App() {
             <div className="nav-progress-fill" style={{ width: `${progressPct}%` }} />
           </div>
 
-          {/* Step counter + manual advance buttons (useful for GPS-denied testing) */}
+          {/* Step counter + manual advance buttons */}
           <div className="nav-step-counter">
             <button className="nav-manual-btn"
               onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
@@ -312,24 +359,23 @@ function App() {
           <div className="input-section">
             <div className="input-label">ORIGIN COORDINATES</div>
             <div className="input-wrapper">
-  <span className="input-icon">◈</span>
-  <input
-    type="text"
-    value={start}
-    onChange={(e) => setStart(e.target.value)}
-    placeholder="Enter origin sector..."
-    className="hud-input"
-    onKeyDown={(e) => e.key === 'Enter' && fetchRoutes()}
-  />
- <button
-  className="loc-btn"
-  onClick={useCurrentLocation}
-  title="Use current location"
->
-  <span className="loc-dot"></span>
-</button>
-
-</div>
+              <span className="input-icon">◈</span>
+              <input
+                type="text"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                placeholder="Enter origin sector..."
+                className="hud-input"
+                onKeyDown={(e) => e.key === 'Enter' && fetchRoutes()}
+              />
+              <button
+                className="loc-btn"
+                onClick={useCurrentLocation}
+                title="Use current location"
+              >
+                <span className="loc-dot"></span>
+              </button>
+            </div>
 
             <button className="swap-btn" onClick={swapLocations} title="Invert trajectory"><span>⇅</span></button>
             <div className="input-label">DESTINATION COORDINATES</div>
