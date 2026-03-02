@@ -193,6 +193,26 @@ function App() {
     { key: 'secondHealthiest',label: 'SECONDARY PATH',   badge: 'ALTERNATE',    badgeCls: 'badge-yellow', cls: 'route-secondary',  color: '#ffe81f' },
   ];
 
+  const useCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    alert("Geolocation not supported");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+      setStart(`${lat}, ${lon}`);
+    },
+    (err) => {
+      alert("Location access denied or unavailable");
+    },
+    { enableHighAccuracy: true }
+  );
+};
+
+
   // ─── RENDER ──────────────────────────────────────────────────────────────────
 
   return (
@@ -292,11 +312,25 @@ function App() {
           <div className="input-section">
             <div className="input-label">ORIGIN COORDINATES</div>
             <div className="input-wrapper">
-              <span className="input-icon">◈</span>
-              <input type="text" value={start} onChange={(e) => setStart(e.target.value)}
-                placeholder="Enter origin sector..." className="hud-input"
-                onKeyDown={(e) => e.key === 'Enter' && fetchRoutes()} />
-            </div>
+  <span className="input-icon">◈</span>
+  <input
+    type="text"
+    value={start}
+    onChange={(e) => setStart(e.target.value)}
+    placeholder="Enter origin sector..."
+    className="hud-input"
+    onKeyDown={(e) => e.key === 'Enter' && fetchRoutes()}
+  />
+ <button
+  className="loc-btn"
+  onClick={useCurrentLocation}
+  title="Use current location"
+>
+  <span className="loc-dot"></span>
+</button>
+
+</div>
+
             <button className="swap-btn" onClick={swapLocations} title="Invert trajectory"><span>⇅</span></button>
             <div className="input-label">DESTINATION COORDINATES</div>
             <div className="input-wrapper">
