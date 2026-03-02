@@ -685,6 +685,33 @@ body, html {
   color: var(--text-dim);
 }
 
+.loc-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.loc-dot {
+  width: 10px;
+  height: 10px;
+  background: #00ff88;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #00ff88;
+}
+
+.loc-btn:hover .loc-dot {
+  transform: scale(1.2);
+}
+
+
+.loc-btn:hover {
+  transform: scale(1.1);
+}
+
+
 .nav-manual-btn {
   background: rgba(255,232,31,0.08);
   border: 1px solid var(--border);
