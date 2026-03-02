@@ -13,13 +13,26 @@ const MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
 
 // 1. GEOCODING — Nominatim
 async function getCoordinates(query) {
+    // If already coordinates: "lat, lon"
+    if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(query)) {
+        const [lat, lon] = query.split(',').map(Number);
+        console.log(`Using raw coordinates: ${lat}, ${lon}`);
+        return [lon, lat]; // Mapbox expects [lon, lat]
+    }
+
+    // Otherwise geocode normally
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?country=IN&limit=1&access_token=${MAPBOX_TOKEN}`;
     const response = await fetch(url);
     const data = await response.json();
-    if (!data.features || data.features.length === 0) throw new Error(`Location not found: ${query}`);
+
+    if (!data.features || data.features.length === 0) {
+        throw new Error(`Location not found: ${query}`);
+    }
+
     console.log(`Geocoded "${query}" to: ${data.features[0].place_name}`);
     return data.features[0].center; // [lon, lat]
 }
+
 
 // 2. AIR QUALITY — PM2.5
 async function getAirQuality(lon, lat) {
